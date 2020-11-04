@@ -1,22 +1,48 @@
 // Modules to control application life and create native browser window
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain, screen } from "electron";
 import path from "path";
+import { callTemplate, imTemplate } from "./template";
 
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+  const notificationWindow = new BrowserWindow({
+    alwaysOnTop: true,
+    frame: false,
+    resizable: false,
+    show: false,
+    skipTaskbar: true,
+    transparent: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: true,
     },
   });
 
   // and load the index.html of the app.
-  mainWindow.loadFile(path.join(__dirname, "../index.html"));
+  notificationWindow.loadFile(path.join(__dirname, "../notification.html"));
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  notificationWindow.webContents.openDevTools({ mode: "undocked" });
+
+  notificationWindow.webContents.once("dom-ready", () => {
+    // notificationWindow.webContents.executeJavaScript(
+    //   `initialize(${JSON.stringify({ ...callTemplate, isDarkTheme: true })})`
+    // );
+
+    notificationWindow.webContents.executeJavaScript(
+      `initialize(${JSON.stringify({ ...imTemplate, isDarkTheme: true })})`
+    );
+  });
+
+  const display = screen.getPrimaryDisplay().workArea;
+  ipcMain.on("resize", (_, { width, height }: Electron.Size) => {
+    notificationWindow.setBounds({
+      width,
+      height,
+      x: display.x + display.width - 5 - width,
+      y: display.y + display.height - 5 - height,
+    });
+    notificationWindow.show();
+  });
 }
 
 // This method will be called when Electron has finished

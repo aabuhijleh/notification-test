@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link id="notification-stylesheet" rel="stylesheet" />
+    <style>
+      @font-face {
+        font-family: "OpenSans-Regular";
+        src: URL("./fonts/OpenSans-Regular.ttf") format("truetype");
+      }
+
+      body {
+        margin: 0;
+        font-family: "OpenSans-Regular";
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/javascript">
+      const { ipcRenderer } = require("electron");
+      const {
+        RainbowNotification,
+        RainbowNotificationAction,
+      } = require("@ale-rainbow/rainbow-notification");
+
+      function initialize(notifTemplate) {
+        const styleElement = document.querySelector("#notification-stylesheet");
+
+        let stylePath =
+          "./node_modules/@ale-rainbow/rainbow-notification/dist/rainbowNotification";
+
+        if (notifTemplate.type === "info") {
+          stylePath += "-info";
+        }
+
+        if (notifTemplate.isDarkTheme) {
+          stylePath += "-dark";
+        }
+
+        stylePath += ".css";
+
+        styleElement.href = stylePath;
+
+        renderNotification(notifTemplate);
+      }
+
+      function renderNotification(notifOptions) {
+        // create RainbowNotificationAction objects
+        // map out action handlers to ipc calls
+        if (notifOptions.actions) {
+          notifOptions.actions = notifOptions.actions.map(
+            (action, actionIndex) => {
+              if (action.handler !== null) {
+                action.handler = () =>
+                  console.log("notificationMessage", {
+                    type: "answer",
+                    answer: { actionIndex, callbackName: "handler" },
+                  });
+              }
+              if (action.choice) {
+                action.choiceHandler = (choiceId) =>
+                  console.log("notificationMessage", {
+                    type: "answer",
+                    answer: {
+                      actionIndex,
+                      callbackName: "choiceHandler",
+                      choiceId,
+                    },
+                  });
+              }
+              return RainbowNotificationAction.create(action);
+            }
+          );
+        }
+
+        // create and render RainbowNotification
+        // on the DOM and attach event handlers
+        const rainbowNotification = RainbowNotification.create(notifOptions);
+        document.getElementById(
+          "root"
+        ).innerHTML = rainbowNotification.getHTMLContent();
+        rainbowNotification.attachActionHandlers(true);
+
+        const size = getNotificationSize();
+
+        // calculate size on DOM and send it to resize the window
+        ipcRenderer.send("resize", size);
+
+        // HACK: Handle case where the content
+        // has not fully renderered yet
+        setTimeout(() => {
+          const newSize = getNotificationSize();
+          if (newSize.height !== size.height || newSize.width !== size.width) {
+            ipcRenderer.send("resize", newSize);
+          }
+        }, 100);
+      }
+
+      function getNotificationSize() {
+        const el = document.querySelector(".extCallNotification");
+        const size = {
+          width: Math.round(el.scrollWidth),
+          height: Math.round(el.scrollHeight),
+        };
+        return size;
+      }
+    </script>
+  </body>
+</html>

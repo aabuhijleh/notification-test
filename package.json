@@ -39,6 +39,6 @@
     "typescript": "^4.0.5"
   },
   "dependencies": {
-    "@ale-rainbow/rainbow-notification": "^1.0.15"
+    "@ale-rainbow/rainbow-notification": "^1.0.24"
   }
 }
